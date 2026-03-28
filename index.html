@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="词行">
+<meta name="theme-color" content="#ffffff">
+<title>词行 · 三语词典</title>
+<style>
+  :root {
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --blue-mid: #85B7EB;
+    --green: #1D9E75;
+    --green-light: #E1F5EE;
+    --red-light: #FAECE7;
+    --red: #993C1D;
+    --border: rgba(0,0,0,0.1);
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --text: #1a1a1a;
+    --text2: #666;
+    --text3: #999;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --card: #2a2a2a;
+      --text: #f0f0f0;
+      --text2: #aaa;
+      --text3: #666;
+      --border: rgba(255,255,255,0.1);
+      --blue-light: #0c2a44;
+      --green-light: #0a2a1e;
+      --red-light: #2a1a12;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; font-family: -apple-system, 'PingFang SC', sans-serif; background: var(--bg); color: var(--text); }
+  
+  /* APP SHELL */
+  .app { display: flex; flex-direction: column; height: 100%; height: 100dvh; }
+  .header { padding: 52px 20px 12px; background: var(--card); border-bottom: 0.5px solid var(--border); flex-shrink: 0; }
+  .header-title { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+  .header-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .tab-bar { display: flex; background: var(--card); border-bottom: 0.5px solid var(--border); flex-shrink: 0; }
+  .tab-btn { flex: 1; padding: 10px 0; font-size: 13px; color: var(--text3); background: none; border: none; cursor: pointer; position: relative; font-family: inherit; transition: color .15s; }
+  .tab-btn.active { color: var(--blue); font-weight: 500; }
+  .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px; background: var(--blue); border-radius: 1px; }
+  .pages { flex: 1; overflow: hidden; position: relative; }
+  .page { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; display: none; flex-direction: column; }
+  .page.active { display: flex; }
+  .pad { padding: 14px; }
+
+  /* SEARCH PAGE */
+  .lang-badge { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--card); border-radius: var(--radius-sm); border: 0.5px solid var(--border); margin-bottom: 10px; }
+  .lang-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .lang-detected { margin-left: auto; font-size: 12px; font-weight: 500; background: var(--bg); padding: 2px 8px; border-radius: 10px; border: 0.5px solid var(--border); }
+  .input-wrap { position: relative; margin-bottom: 12px; }
+  .word-input { width: 100%; padding: 13px 50px 13px 16px; border-radius: var(--radius); border: 1.5px solid var(--border); background: var(--card); font-size: 18px; color: var(--text); font-family: inherit; outline: none; transition: border-color .15s; }
+  .word-input:focus { border-color: var(--blue); }
+  .search-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 9px; background: var(--blue); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity .15s; }
+  .search-btn:active { opacity: .8; }
+  .loading { display: flex; flex-direction: column; align-items: center; padding: 40px 0; gap: 10px; }
+  .spinner { width: 24px; height: 24px; border: 2.5px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--text3); }
+
+  /* RESULT CARD */
+  .result-card { background: var(--card); border-radius: var(--radius); border: 0.5px solid var(--border); overflow: hidden; }
+  .word-hero { padding: 16px 18px 12px; border-bottom: 0.5px solid var(--border); }
+  .word-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .word-big { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; }
+  .word-src-tag { font-size: 11px; padding: 3px 8px; border-radius: 10px; background: var(--blue-light); color: var(--blue); font-weight: 500; margin-top: 4px; flex-shrink: 0; }
+  .phonetic-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .pron-btn { display: flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 20px; border: 0.5px solid var(--border); background: var(--bg); cursor: pointer; font-size: 12px; color: var(--text2); font-family: inherit; transition: all .1s; }
+  .pron-btn:active { transform: scale(.96); }
+  .pron-btn.playing { background: var(--blue-light); border-color: var(--blue-mid); color: var(--blue); }
+  .lang-section { border-bottom: 0.5px solid var(--border); }
+  .lang-section:last-child { border-bottom: none; }
+  .lang-header { padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+  .lang-header:active { background: var(--bg); }
+  .lang-left { display: flex; align-items: center; gap: 10px; }
+  .flag-circle { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  .lang-name { font-size: 12px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.3px; }
+  .lang-primary { font-size: 15px; color: var(--text); margin-top: 1px; }
+  .lang-right { display: flex; align-items: center; gap: 6px; }
+  .meaning-count { font-size: 11px; color: var(--text3); }
+  .chevron { width: 16px; height: 16px; color: var(--text3); transition: transform .2s; flex-shrink: 0; }
+  .chevron.open { transform: rotate(180deg); }
+  .meanings-body { overflow: hidden; max-height: 0; transition: max-height .3s ease; }
+  .meanings-body.open { max-height: 1000px; }
+  .meanings-inner { padding: 4px 18px 14px; }
+  .meaning-item { padding: 8px 0; border-top: 0.5px solid var(--border); }
+  .meaning-item:first-child { border-top: none; padding-top: 4px; }
+  .m-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .m-num { font-size: 11px; color: var(--text3); font-weight: 500; }
+  .m-pos { font-size: 10px; padding: 1px 6px; border-radius: 5px; background: var(--bg); color: var(--text3); border: 0.5px solid var(--border); }
+  .m-text { font-size: 14px; color: var(--text); line-height: 1.45; }
+  .m-example { font-size: 12px; color: var(--text3); font-style: italic; margin-top: 4px; padding-left: 10px; border-left: 2px solid var(--border); line-height: 1.4; }
+  .card-actions { padding: 12px 14px; display: flex; gap: 8px; background: var(--bg); border-top: 0.5px solid var(--border); }
+  .act-btn { flex: 1; padding: 10px 0; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; border: 0.5px solid var(--border); background: var(--card); color: var(--text); transition: all .1s; text-align: center; }
+  .act-btn:active { opacity: .8; transform: scale(.98); }
+  .act-btn.primary { background: var(--blue); color: white; border-color: var(--blue); }
+  .act-btn.saved { background: var(--green-light); color: var(--green); border-color: var(--green); }
+
+  /* WORDBOOK */
+  .group-card { background: var(--card); border-radius: var(--radius); border: 0.5px solid var(--border); overflow: hidden; margin-bottom: 10px; cursor: pointer; transition: border-color .15s; }
+  .group-card:active { opacity: .9; }
+  .gc-body { padding: 13px 15px; display: flex; align-items: center; gap: 12px; }
+  .gc-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .gc-info { flex: 1; min-width: 0; }
+  .gc-name { font-size: 15px; font-weight: 600; }
+  .gc-meta { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .gc-right { flex-shrink: 0; text-align: right; }
+  .gc-count { font-size: 11px; padding: 2px 7px; border-radius: 8px; font-weight: 500; display: inline-block; margin-bottom: 4px; }
+  .gc-progress { width: 56px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .gc-fill { height: 100%; border-radius: 2px; }
+  .gc-words-row { padding: 0 15px 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .mini-chip { font-size: 11px; padding: 3px 8px; border-radius: 8px; background: var(--bg); color: var(--text3); border: 0.5px solid var(--border); }
+  .add-group-btn { width: 100%; padding: 16px; border-radius: var(--radius); border: 1.5px dashed var(--border); background: transparent; font-size: 14px; color: var(--text3); cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all .15s; }
+  .add-group-btn:active { background: var(--card); }
+
+  /* WORD LIST (inside group) */
+  .word-list-card { background: var(--card); border-radius: var(--radius); border: 0.5px solid var(--border); overflow: hidden; }
+  .word-row { padding: 12px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 0.5px solid var(--border); cursor: pointer; transition: background .1s; }
+  .word-row:last-child { border-bottom: none; }
+  .word-row:active { background: var(--bg); }
+  .wr-info { flex: 1; min-width: 0; }
+  .wr-word { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wr-trans { font-size: 12px; color: var(--text3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wr-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .badge { font-size: 10px; padding: 2px 7px; border-radius: 8px; font-weight: 500; }
+  .badge-due { background: var(--red-light); color: var(--red); }
+  .badge-ok { background: var(--green-light); color: var(--green); }
+  .badge-new { background: var(--blue-light); color: var(--blue); }
+  .play-circle { width: 28px; height: 28px; border-radius: 50%; border: 0.5px solid var(--border); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .play-circle:active { background: var(--bg); }
+
+  /* DETAIL PAGE (slide in) */
+  .detail-page { position: absolute; inset: 0; background: var(--bg); transform: translateX(100%); transition: transform .3s cubic-bezier(.4,0,.2,1); z-index: 10; display: flex; flex-direction: column; overflow: hidden; }
+  .detail-page.open { transform: translateX(0); }
+  .detail-nav { padding: 52px 16px 10px; background: var(--card); border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .back-btn2 { display: flex; align-items: center; gap: 4px; background: none; border: none; color: var(--blue); font-size: 16px; cursor: pointer; font-family: inherit; padding: 4px 0; }
+  .detail-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .detail-hero { padding: 20px 20px 16px; background: var(--card); border-bottom: 0.5px solid var(--border); }
+  .detail-word-big { font-size: 34px; font-weight: 700; letter-spacing: -1px; }
+  .detail-tags { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .detail-tag { font-size: 11px; padding: 3px 9px; border-radius: 10px; border: 0.5px solid var(--border); background: var(--bg); color: var(--text3); }
+  .detail-phonetics { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .section-block { margin: 12px; background: var(--card); border-radius: var(--radius); border: 0.5px solid var(--border); overflow: hidden; }
+  .section-head { padding: 12px 16px 8px; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 0.5px solid var(--border); }
+  .syn-wrap { padding: 12px 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .syn-chip { font-size: 13px; padding: 5px 12px; border-radius: 20px; border: 0.5px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; }
+  .syn-chip:active { background: var(--blue-light); border-color: var(--blue-mid); }
+  .mem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+  .mem-cell { background: var(--bg); border-radius: var(--radius-sm); padding: 12px; }
+  .mem-num { font-size: 22px; font-weight: 600; }
+  .mem-lbl { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .ease-wrap { padding: 0 12px 12px; }
+  .ease-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text3); margin-bottom: 6px; }
+  .ease-bar { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  .ease-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+  .next-row { padding: 10px 12px 12px; font-size: 12px; color: var(--text3); border-top: 0.5px solid var(--border); display: flex; justify-content: space-between; }
+  .detail-footer { padding: 12px 16px calc(12px + var(--safe-bottom)); border-top: 0.5px solid var(--border); background: var(--card); display: flex; gap: 8px; flex-shrink: 0; }
+
+  /* REVIEW */
+  .rv-wrap { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-cell { background: var(--card); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 14px; }
+  .stat-num { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; }
+  .stat-lbl { font-size: 12px; color: var(--text3); margin-top: 3px; }
+  .rv-card { background: var(--card); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 20px; }
+  .rv-prog-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .rv-prog-bar { flex: 1; height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; }
+  .rv-prog-fill { height: 100%; background: var(--blue); border-radius: 2px; transition: width .3s; }
+  .rv-prog-text { font-size: 12px; color: var(--text3); flex-shrink: 0; }
+  .rv-word { font-size: 32px; font-weight: 700; text-align: center; letter-spacing: -0.8px; margin-bottom: 8px; }
+  .rv-prons { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .rv-reveal-btn { width: 100%; padding: 12px; border-radius: var(--radius); border: 0.5px solid var(--border); background: var(--bg); font-size: 15px; font-weight: 500; color: var(--text); cursor: pointer; font-family: inherit; margin-bottom: 12px; transition: all .1s; }
+  .rv-reveal-btn:active { opacity: .8; }
+  .rv-answer { background: var(--bg); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px; }
+  .rv-ans-row { display: flex; gap: 10px; padding: 6px 0; border-bottom: 0.5px solid var(--border); }
+  .rv-ans-row:last-child { border-bottom: none; }
+  .rv-ans-flag { font-size: 16px; flex-shrink: 0; padding-top: 1px; }
+  .rv-ans-text { font-size: 14px; color: var(--text); }
+  .rv-ans-ex { font-size: 12px; color: var(--text3); margin-top: 2px; font-style: italic; }
+  .rate-row { display: flex; gap: 8px; }
+  .rate-btn { flex: 1; padding: 11px 0; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all .1s; border: 0.5px solid; }
+  .rate-btn:active { transform: scale(.97); }
+  .rate-hard { background: var(--red-light); color: var(--red); border-color: #F0997B; }
+  .rate-ok { background: #EAF3DE; color: #3B6D11; border-color: #97C459; }
+  .rate-easy { background: var(--blue-light); color: var(--blue); border-color: var(--blue-mid); }
+  .rv-nav { display: flex; gap: 8px; margin-top: 4px; }
+  .rv-nav-btn { flex: 1; padding: 10px 0; border-radius: var(--radius-sm); border: 0.5px solid var(--border); background: var(--card); font-size: 13px; font-weight: 500; color: var(--text); cursor: pointer; font-family: inherit; text-align: center; }
+  .streak-row { display: flex; gap: 6px; }
+  .sd { width: 26px; height: 26px; border-radius: 50%; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: 500; background: var(--bg); color: var(--text3); border: 0.5px solid var(--border); }
+  .sd.done { background: var(--blue); color: white; border-color: var(--blue); }
+  .sd.today { background: var(--blue); color: white; outline: 3px solid var(--blue-mid); outline-offset: 1px; }
+
+  /* SETTINGS */
+  .settings-wrap { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .slab { font-size: 13px; font-weight: 600; color: var(--text3); padding: 4px 4px 2px; }
+  .settings-card { background: var(--card); border-radius: var(--radius); border: 0.5px solid var(--border); overflow: hidden; }
+  .settings-row { padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid var(--border); }
+  .settings-row:last-child { border-bottom: none; }
+  .sr-label { font-size: 14px; color: var(--text); }
+  .sr-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  .toggle { width: 48px; height: 28px; border-radius: 14px; background: var(--green); position: relative; cursor: pointer; border: none; transition: background .2s; flex-shrink: 0; }
+  .toggle.off { background: #ccc; }
+  .toggle::after { content: ''; position: absolute; width: 22px; height: 22px; border-radius: 50%; background: white; top: 3px; left: 3px; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .toggle.on::after { transform: translateX(20px); }
+  .api-key-input { width: 100%; padding: 10px 12px; border-radius: var(--radius-sm); border: 0.5px solid var(--border); background: var(--bg); font-size: 13px; color: var(--text); font-family: 'Menlo', monospace; outline: none; margin-top: 4px; }
+  .api-key-input:focus { border-color: var(--blue); }
+  .save-btn { width: 100%; margin-top: 8px; padding: 11px; border-radius: var(--radius-sm); background: var(--blue); color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; }
+  .save-btn:active { opacity: .85; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: auto; }
+  .modal-sheet { background: var(--card); border-radius: 20px 20px 0 0; padding: 22px 20px calc(28px + var(--safe-bottom)); width: 100%; transform: translateY(100%); transition: transform .3s cubic-bezier(.4,0,.2,1); }
+  .modal-overlay.open .modal-sheet { transform: translateY(0); }
+  .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+  .modal-input { width: 100%; padding: 11px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg); font-size: 15px; color: var(--text); font-family: inherit; outline: none; margin-bottom: 12px; }
+  .modal-input:focus { border-color: var(--blue); }
+  .emoji-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .emoji-opt { width: 40px; height: 40px; border-radius: 10px; border: 1.5px solid transparent; background: var(--bg); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .1s; }
+  .emoji-opt.sel { border-color: var(--blue); background: var(--blue-light); }
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-cancel { flex: 1; padding: 12px; border-radius: var(--radius-sm); border: 0.5px solid var(--border); background: var(--bg); font-size: 15px; font-weight: 500; color: var(--text); cursor: pointer; font-family: inherit; }
+  .modal-confirm { flex: 1; padding: 12px; border-radius: var(--radius-sm); background: var(--blue); color: white; border: none; font-size: 15px; font-weight: 500; cursor: pointer; font-family: inherit; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: calc(20px + var(--safe-bottom)); left: 50%; transform: translateX(-50%) translateY(20px); background: rgba(0,0,0,0.8); color: white; padding: 10px 18px; border-radius: 20px; font-size: 13px; opacity: 0; transition: all .25s; z-index: 200; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* BOTTOM SAFE AREA */
+  .bottom-safe { height: var(--safe-bottom); flex-shrink: 0; }
+
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--text3); font-size: 14px; line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="header-title">词行</div>
+    <div class="header-sub">三语词典 · 智能记忆</div>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('search')">查词</button>
+    <button class="tab-btn" onclick="switchTab('wordbook')">词本</button>
+    <button class="tab-btn" onclick="switchTab('review')">复习</button>
+    <button class="tab-btn" onclick="switchTab('settings')">设置</button>
+  </div>
+  <div class="pages">
+
+    <!-- SEARCH PAGE -->
+    <div class="page active" id="page-search">
+      <div class="pad">
+        <div class="lang-badge">
+          <div class="lang-dot"></div>
+          <span style="font-size:12px;color:var(--text3);">自动检测语言</span>
+          <span class="lang-detected" id="detected-lang">—</span>
+        </div>
+        <div class="input-wrap">
+          <input class="word-input" id="word-input" placeholder="输入单词或词组..."
+            oninput="detectLang(this.value)"
+            onkeydown="if(event.key==='Enter')doSearch()">
+          <button class="search-btn" onclick="doSearch()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          </button>
+        </div>
+        <div id="loading-area" style="display:none;">
+          <div class="loading">
+            <div class="spinner"></div>
+            <div class="loading-text">AI 正在翻译...</div>
+          </div>
+        </div>
+        <div id="result-area"></div>
+      </div>
+    </div>
+
+    <!-- WORDBOOK PAGE -->
+    <div class="page" id="page-wordbook">
+      <div class="pad" id="wb-content"></div>
+      <!-- Detail page overlays wordbook -->
+      <div class="detail-page" id="detail-page">
+        <div class="detail-nav">
+          <button class="back-btn2" onclick="closeDetail()">
+            <svg width="10" height="17" viewBox="0 0 10 17" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9,1 1,8.5 9,16"/></svg>
+            词本
+          </button>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <button class="play-circle" id="detail-play-btn" onclick="playDetailWord()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--text2)"><polygon points="5,3 19,12 5,21"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="detail-scroll" id="detail-scroll"></div>
+        <div class="detail-footer">
+          <button class="act-btn" style="color:var(--red);" onclick="removeWord()">移出词本</button>
+          <button class="act-btn primary" onclick="reviewWord()">立即复习</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVIEW PAGE -->
+    <div class="page" id="page-review">
+      <div class="rv-wrap" id="rv-content"></div>
+    </div>
+
+    <!-- SETTINGS PAGE -->
+    <div class="page" id="page-settings">
+      <div class="settings-wrap">
+        <div class="slab">API 设置</div>
+        <div class="settings-card">
+          <div class="settings-row" style="flex-direction:column;align-items:flex-start;">
+            <div class="sr-label">DeepSeek API Key</div>
+            <div class="sr-sub">前往 platform.deepseek.com 获取</div>
+            <input class="api-key-input" id="api-key-input" type="password" placeholder="sk-..." value="">
+            <button class="save-btn" onclick="saveApiKey()">保存</button>
+          </div>
+        </div>
+        <div class="slab">复习提醒</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div><div class="sr-label">每日提醒</div><div class="sr-sub">晚上 20:00 推送复习任务</div></div>
+            <button class="toggle on" id="t-notify" onclick="toggleSetting('t-notify')"></button>
+          </div>
+          <div class="settings-row">
+            <div><div class="sr-label">间隔重复算法</div><div class="sr-sub">SM-2 · 根据掌握程度调整复习间隔</div></div>
+            <button class="toggle on" id="t-sm2" onclick="toggleSetting('t-sm2')"></button>
+          </div>
+        </div>
+        <div class="slab">发音设置</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div><div class="sr-label">查词自动朗读</div><div class="sr-sub">查词后自动播放英语发音</div></div>
+            <button class="toggle on" id="t-autopron" onclick="toggleSetting('t-autopron')"></button>
+          </div>
+        </div>
+        <div class="slab">数据</div>
+        <div class="settings-card">
+          <div class="settings-row" style="cursor:pointer;" onclick="exportData()">
+            <div class="sr-label">导出词本数据</div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="settings-row" style="cursor:pointer;" onclick="clearData()">
+            <div class="sr-label" style="color:var(--red);">清除所有数据</div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div style="text-align:center;font-size:12px;color:var(--text3);padding:10px 0 4px;">词行 v1.0 · 数据存储在本机</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ADD GROUP MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-title">新建分组</div>
+    <input class="modal-input" id="group-name-input" placeholder="分组名称，如：旅行英语">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">选择图标</div>
+    <div class="emoji-grid" id="emoji-grid"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="hideModal()">取消</button>
+      <button class="modal-confirm" onclick="createGroup()">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const STORE_KEY = 'cixing_v1';
+let state = {
+  apiKey: '',
+  groups: [
+    { id: 1, name: '旅行英语', icon: '✈️', color: '#E6F1FB' },
+    { id: 2, name: '商务词汇', icon: '💼', color: '#EAF3DE' },
+    { id: 3, name: '日常俄语', icon: '🌏', color: '#FAECE7' },
+  ],
+  words: [],
+  settings: { notify: true, sm2: true, autopron: true }
+};
+
+function loadState() {
+  try {
+    const s = localStorage.getItem(STORE_KEY);
+    if (s) state = { ...state, ...JSON.parse(s) };
+  } catch(e) {}
+  document.getElementById('api-key-input').value = state.apiKey || '';
+}
+
+function saveState() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+}
+
+// ─── TAB NAVIGATION ──────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) =>
+    b.classList.toggle('active', ['search','wordbook','review','settings'][i] === tab));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  if (tab === 'wordbook') renderWordbook();
+  if (tab === 'review') renderReview();
+}
+
+// ─── LANGUAGE DETECTION ──────────────────────────────────────────────────────
+function detectLang(v) {
+  const el = document.getElementById('detected-lang');
+  if (!v) { el.textContent = '—'; return; }
+  if (/[\u0400-\u04FF]/.test(v)) el.textContent = '俄语';
+  else if (/[\u4e00-\u9fff]/.test(v)) el.textContent = '中文';
+  else if (/[a-zA-Z]/.test(v)) el.textContent = '英语';
+  else el.textContent = '—';
+}
+
+// ─── SEARCH & AI TRANSLATION ─────────────────────────────────────────────────
+let expandedSections = {};
+
+async function doSearch() {
+  const word = document.getElementById('word-input').value.trim();
+  if (!word) return;
+
+  const apiKey = state.apiKey;
+  if (!apiKey) {
+    showToast('请先在设置中填写 API Key');
+    switchTab('settings');
+    return;
+  }
+
+  document.getElementById('loading-area').style.display = 'block';
+  document.getElementById('result-area').innerHTML = '';
+  expandedSections = {};
+
+  const hasRu = /[\u0400-\u04FF]/.test(word);
+  const hasCn = /[\u4e00-\u9fff]/.test(word);
+  const srcLang = hasRu ? '俄语' : hasCn ? '中文' : '英语';
+  const targetLangs = hasRu ? ['中文', '英语'] : hasCn ? ['英语', '俄语'] : ['中文', '俄语'];
+
+  const prompt = `你是一个专业的三语词典助手。请对单词/词组「${word}」（${srcLang}）进行详细解析。
+
+请严格按以下JSON格式返回，不要返回任何其他内容：
+{
+  "word": "${word}",
+  "src_lang": "${srcLang}",
+  "phonetic_en": "英语音标或读音提示",
+  "phonetic_ru": "俄语读音提示（西里尔字母注音）",
+  "translations": [
+    {
+      "lang": "${targetLangs[0]}",
+      "flag": "${targetLangs[0]==='中文'?'🇨🇳':targetLangs[0]==='英语'?'🇬🇧':'🇷🇺'}",
+      "primary": "最主要的一个翻译（简短）",
+      "meanings": [
+        {"pos": "词性缩写", "num": 1, "text": "释义", "example": "例句（用${targetLangs[0]==='中文'?'中文':'对应语言'}）"},
+        {"pos": "词性缩写", "num": 2, "text": "第二个释义（如有）", "example": "例句"}
+      ]
+    },
+    {
+      "lang": "${targetLangs[1]}",
+      "flag": "${targetLangs[1]==='中文'?'🇨🇳':targetLangs[1]==='英语'?'🇬🇧':'🇷🇺'}",
+      "primary": "最主要的一个翻译",
+      "meanings": [
+        {"pos": "词性缩写", "num": 1, "text": "释义", "example": "例句"}
+      ]
+    }
+  ],
+  "synonyms": ["近义词1", "近义词2", "近义词3"]
+}
+
+注意：
+- meanings 最多提供3个最常用释义
+- 例句要简短实用
+- synonyms 提供3-4个近义词/相关词
+- 严格JSON格式，不要markdown代码块`;
+
+  try {
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 1000
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    let text = data.choices[0].message.content.trim();
+    // strip markdown fences if present
+    text = text.replace(/^```json\s*/,'').replace(/\s*```$/,'').trim();
+    const result = JSON.parse(text);
+
+    document.getElementById('loading-area').style.display = 'none';
+    renderResult(result);
+
+    if (state.settings.autopron) {
+      setTimeout(() => speakWord(word, srcLang === '俄语' ? 'ru' : srcLang === '中文' ? 'zh' : 'en'), 400);
+    }
+
+  } catch(e) {
+    document.getElementById('loading-area').style.display = 'none';
+    document.getElementById('result-area').innerHTML =
+      `<div style="background:var(--red-light);border-radius:var(--radius);padding:14px 16px;font-size:14px;color:var(--red);">
+        翻译失败：${e.message}<br><span style="font-size:12px;opacity:.8;margin-top:4px;display:block;">请检查 API Key 是否正确，或网络是否正常</span>
+      </div>`;
+  }
+}
+
+function renderResult(d) {
+  const flagBg = { '🇨🇳': '#FAECE7', '🇬🇧': '#E6F1FB', '🇷🇺': '#EAF3DE' };
+  const srcFlag = d.src_lang === '中文' ? '🇨🇳' : d.src_lang === '俄语' ? '🇷🇺' : '🇬🇧';
+
+  const langsHtml = d.translations.map((lang, li) => {
+    const sid = `sec${li}`;
+    const meaningsHtml = lang.meanings.map(m => `
+      <div class="meaning-item">
+        <div class="m-top"><span class="m-num">${m.num}</span><span class="m-pos">${m.pos}</span></div>
+        <div class="m-text">${m.text}</div>
+        <div class="m-example">${m.example}</div>
+      </div>`).join('');
+    return `
+      <div class="lang-section">
+        <div class="lang-header" onclick="toggleSection('${sid}')">
+          <div class="lang-left">
+            <div class="flag-circle" style="background:${flagBg[lang.flag]||'#f0f0f0'}">${lang.flag}</div>
+            <div>
+              <div class="lang-name">${lang.lang}</div>
+              <div class="lang-primary">${lang.primary}</div>
+            </div>
+          </div>
+          <div class="lang-right">
+            <span class="meaning-count">${lang.meanings.length} 个释义</span>
+            <svg class="chevron" id="chev-${sid}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="meanings-body" id="${sid}">
+          <div class="meanings-inner">${meaningsHtml}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('result-area').innerHTML = `
+    <div class="result-card">
+      <div class="word-hero">
+        <div class="word-top">
+          <div class="word-big">${d.word}</div>
+          <span class="word-src-tag">${d.src_lang}</span>
+        </div>
+        <div class="phonetic-row">
+          <button class="pron-btn" id="pron-en" onclick="pronClick('pron-en','${d.word}','en')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            🇬🇧 ${d.phonetic_en || ''}
+          </button>
+          <button class="pron-btn" id="pron-ru" onclick="pronClick('pron-ru','${d.word}','ru')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            🇷🇺 ${d.phonetic_ru || ''}
+          </button>
+        </div>
+      </div>
+      ${langsHtml}
+      <div class="card-actions">
+        <button class="act-btn" onclick="addToGroupMenu('${encodeURIComponent(JSON.stringify(d))}')">加入分组 ▾</button>
+        <button class="act-btn primary" id="save-word-btn" onclick="saveWord('${encodeURIComponent(JSON.stringify(d))}')">+ 加入词本</button>
+      </div>
+    </div>`;
+}
+
+function toggleSection(id) {
+  const body = document.getElementById(id);
+  const chev = document.getElementById('chev-' + id);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chev.classList.toggle('open', !isOpen);
+}
+
+// ─── PRONUNCIATION ────────────────────────────────────────────────────────────
+function speakWord(word, lang) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(word);
+  u.lang = lang === 'ru' ? 'ru-RU' : lang === 'zh' ? 'zh-CN' : 'en-US';
+  window.speechSynthesis.speak(u);
+}
+
+function pronClick(btnId, word, lang) {
+  document.querySelectorAll('.pron-btn').forEach(b => b.classList.remove('playing'));
+  const btn = document.getElementById(btnId);
+  btn.classList.add('playing');
+  speakWord(word, lang);
+  setTimeout(() => btn.classList.remove('playing'), 1500);
+}
+
+// ─── SAVE WORD ────────────────────────────────────────────────────────────────
+let pendingWordData = null;
+let pendingGroupId = null;
+
+function saveWord(encoded, groupId) {
+  const d = JSON.parse(decodeURIComponent(encoded));
+  if (state.words.find(w => w.word === d.word)) {
+    showToast('已在词本中');
+    return;
+  }
+  state.words.push({
+    word: d.word,
+    src_lang: d.src_lang,
+    phonetic_en: d.phonetic_en,
+    phonetic_ru: d.phonetic_ru,
+    translations: d.translations,
+    synonyms: d.synonyms || [],
+    groupId: groupId || null,
+    status: 'new',
+    reviews: 0,
+    ease: 50,
+    added: new Date().toISOString().split('T')[0],
+    nextReview: new Date().toISOString().split('T')[0]
+  });
+  saveState();
+  const btn = document.getElementById('save-word-btn');
+  if (btn) { btn.textContent = '✓ 已保存'; btn.className = 'act-btn saved'; }
+  showToast('已加入词本');
+}
+
+function addToGroupMenu(encoded) {
+  pendingWordData = encoded;
+  // simple inline menu
+  const existing = document.getElementById('group-inline-menu');
+  if (existing) { existing.remove(); return; }
+  const menu = document.createElement('div');
+  menu.id = 'group-inline-menu';
+  menu.style.cssText = 'position:fixed;bottom:80px;left:14px;right:14px;background:var(--card);border-radius:var(--radius);border:0.5px solid var(--border);overflow:hidden;z-index:50;';
+  menu.innerHTML = state.groups.map(g => `
+    <div style="padding:14px 16px;font-size:15px;display:flex;align-items:center;gap:10px;border-bottom:0.5px solid var(--border);cursor:pointer;"
+      onclick="saveWord('${encoded}',${g.id});document.getElementById('group-inline-menu').remove()">
+      <span style="font-size:18px;">${g.icon}</span>${g.name}
+    </div>`).join('') +
+    `<div style="padding:14px 16px;font-size:14px;color:var(--text3);text-align:center;cursor:pointer;" onclick="document.getElementById('group-inline-menu').remove()">取消</div>`;
+  document.body.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', () => { menu.remove(); }, { once: true }), 50);
+}
+
+// ─── WORDBOOK ─────────────────────────────────────────────────────────────────
+let curGroupFilter = null;
+
+function renderWordbook() {
+  const el = document.getElementById('wb-content');
+  if (curGroupFilter !== null) {
+    renderGroupDetail(curGroupFilter);
+    return;
+  }
+  const groupsHtml = state.groups.map(g => {
+    const ws = state.words.filter(w => w.groupId === g.id);
+    const due = ws.filter(w => w.status === 'due').length;
+    const pct = ws.length ? Math.round(ws.filter(w => w.status === 'ok').length / ws.length * 100) : 0;
+    return `
+      <div class="group-card" onclick="openGroup(${g.id})">
+        <div class="gc-body">
+          <div class="gc-icon" style="background:${g.color}">${g.icon}</div>
+          <div class="gc-info">
+            <div class="gc-name">${g.name}</div>
+            <div class="gc-meta">${ws.length} 个单词${due > 0 ? ` · ${due} 待复习` : ''}</div>
+          </div>
+          <div class="gc-right">
+            <span class="gc-count ${due > 0 ? 'badge-due' : 'badge-ok'}">${due > 0 ? due + '待复习' : '掌握' + pct + '%'}</span>
+            <div class="gc-progress"><div class="gc-fill" style="width:${pct}%;background:${pct > 70 ? 'var(--green)' : 'var(--blue)'};"></div></div>
+          </div>
+        </div>
+        <div class="gc-words-row">
+          ${ws.slice(0,4).map(w => `<span class="mini-chip">${w.word}</span>`).join('')}
+          ${ws.length > 4 ? `<span class="mini-chip">+${ws.length - 4}</span>` : ''}
+          ${ws.length === 0 ? '<span style="font-size:12px;color:var(--text3);">暂无单词</span>' : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  const ungrouped = state.words.filter(w => !w.groupId);
+
+  el.innerHTML = `
+    ${state.groups.length === 0 && ungrouped.length === 0 ?
+      '<div class="empty-state">词本还是空的<br>去查词然后加入词本吧</div>' : ''}
+    ${groupsHtml}
+    ${ungrouped.length > 0 ? `
+      <div style="font-size:13px;font-weight:600;color:var(--text3);padding:4px 2px 8px;margin-top:4px;">未分组 (${ungrouped.length})</div>
+      <div class="word-list-card" style="margin-bottom:10px;">
+        ${ungrouped.map(w => wordRowHtml(w)).join('')}
+      </div>` : ''}
+    <button class="add-group-btn" onclick="showAddModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      新建分组
+    </button>
+    <div class="bottom-safe"></div>`;
+}
+
+function wordRowHtml(w) {
+  const primary = w.translations?.[0]?.primary || '';
+  return `<div class="word-row" onclick="openDetail('${encodeURIComponent(w.word)}')">
+    <div class="wr-info">
+      <div class="wr-word">${w.word}</div>
+      <div class="wr-trans">${primary}</div>
+    </div>
+    <div class="wr-right">
+      <span class="badge badge-${w.status==='due'?'due':w.status==='ok'?'ok':'new'}">${w.status==='due'?'待复习':w.status==='ok'?'已掌握':'新词'}</span>
+      <button class="play-circle" onclick="event.stopPropagation();speakWord('${w.word}',w.src_lang==='俄语'?'ru':w.src_lang==='中文'?'zh':'en')">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--text2)"><polygon points="5,3 19,12 5,21"/></svg>
+      </button>
+    </div>
+  </div>`;
+}
+
+function openGroup(gid) {
+  curGroupFilter = gid;
+  renderGroupDetail(gid);
+}
+
+function renderGroupDetail(gid) {
+  const g = state.groups.find(x => x.id === gid);
+  const ws = state.words.filter(w => w.groupId === gid);
+  const el = document.getElementById('wb-content');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <button onclick="closeGroup()" style="background:none;border:none;color:var(--blue);font-size:15px;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:inherit;padding:0;">
+        <svg width="9" height="15" viewBox="0 0 9 15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="8,1 1,7.5 8,14"/></svg>
+        全部分组
+      </button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+      <div style="width:44px;height:44px;border-radius:12px;background:${g.color};display:flex;align-items:center;justify-content:center;font-size:22px;">${g.icon}</div>
+      <div>
+        <div style="font-size:18px;font-weight:600;">${g.name}</div>
+        <div style="font-size:12px;color:var(--text3);">${ws.length} 个单词</div>
+      </div>
+    </div>
+    ${ws.length > 0 ?
+      `<div class="word-list-card">${ws.map(w => wordRowHtml(w)).join('')}</div>` :
+      '<div class="empty-state">这个分组还没有单词<br>去查词时选择加入此分组</div>'}
+    <div class="bottom-safe"></div>`;
+}
+
+function closeGroup() {
+  curGroupFilter = null;
+  renderWordbook();
+}
+
+// ─── WORD DETAIL ──────────────────────────────────────────────────────────────
+let curDetailWord = null;
+
+function openDetail(encodedWord) {
+  const word = decodeURIComponent(encodedWord);
+  curDetailWord = state.words.find(w => w.word === word);
+  if (!curDetailWord) return;
+  renderDetail(curDetailWord);
+  document.getElementById('detail-page').classList.add('open');
+}
+
+function renderDetail(w) {
+  const easeColor = w.ease >= 80 ? 'var(--green)' : w.ease >= 50 ? 'var(--blue)' : 'var(--red)';
+  const flagBg = { '🇨🇳': '#FAECE7', '🇬🇧': '#E6F1FB', '🇷🇺': '#EAF3DE' };
+  const g = w.groupId ? state.groups.find(x => x.id === w.groupId) : null;
+
+  const transHtml = (w.translations || []).map((lang, li) => {
+    const sid = `ds${li}`;
+    return `
+      <div class="lang-section">
+        <div class="lang-header" onclick="toggleSection('${sid}')">
+          <div class="lang-left">
+            <div class="flag-circle" style="background:${flagBg[lang.flag]||'#f0f0f0'}">${lang.flag}</div>
+            <div><div class="lang-name">${lang.lang}</div><div class="lang-primary">${lang.primary}</div></div>
+          </div>
+          <div class="lang-right">
+            <span class="meaning-count">${lang.meanings.length} 个释义</span>
+            <svg class="chevron" id="chev-${sid}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="meanings-body" id="${sid}">
+          <div class="meanings-inner">
+            ${lang.meanings.map(m => `
+              <div class="meaning-item">
+                <div class="m-top"><span class="m-num">${m.num}</span><span class="m-pos">${m.pos}</span></div>
+                <div class="m-text">${m.text}</div>
+                <div class="m-example">${m.example}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('detail-scroll').innerHTML = `
+    <div class="detail-hero">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div class="detail-word-big">${w.word}</div>
+        <span class="word-src-tag">${w.src_lang}</span>
+      </div>
+      <div class="detail-tags">
+        ${g ? `<span class="detail-tag">${g.icon} ${g.name}</span>` : ''}
+        <span class="detail-tag badge-${w.status==='due'?'due':w.status==='ok'?'ok':'new'}">${w.status==='due'?'待复习':w.status==='ok'?'已掌握':'新词'}</span>
+      </div>
+      <div class="detail-phonetics">
+        <button class="pron-btn" onclick="speakWord('${w.word}','en')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          🇬🇧 ${w.phonetic_en || '英语'}
+        </button>
+        <button class="pron-btn" onclick="speakWord('${w.word}','ru')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          🇷🇺 ${w.phonetic_ru || '俄语'}
+        </button>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head">释义</div>
+      ${transHtml}
+    </div>
+
+    ${w.synonyms?.length ? `
+    <div class="section-block">
+      <div class="section-head">近义词 / 相关词</div>
+      <div class="syn-wrap">
+        ${w.synonyms.map(s => `<span class="syn-chip">${s}</span>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <div class="section-block">
+      <div class="section-head">记忆数据</div>
+      <div class="mem-grid">
+        <div class="mem-cell"><div class="mem-num">${w.reviews}</div><div class="mem-lbl">复习次数</div></div>
+        <div class="mem-cell"><div class="mem-num" style="color:${easeColor}">${w.ease}%</div><div class="mem-lbl">掌握程度</div></div>
+      </div>
+      <div class="ease-wrap">
+        <div class="ease-row"><span>掌握程度</span><span style="color:${easeColor};font-weight:600;">${w.ease}%</span></div>
+        <div class="ease-bar"><div class="ease-fill" style="width:${w.ease}%;background:${easeColor};"></div></div>
+      </div>
+      <div class="next-row">
+        <span>下次复习：<strong>${w.nextReview}</strong></span>
+        <span>加入于 ${w.added}</span>
+      </div>
+    </div>
+    <div class="bottom-safe"></div>`;
+}
+
+function closeDetail() {
+  document.getElementById('detail-page').classList.remove('open');
+  curDetailWord = null;
+}
+
+function playDetailWord() {
+  if (curDetailWord) speakWord(curDetailWord.word, curDetailWord.src_lang === '俄语' ? 'ru' : curDetailWord.src_lang === '中文' ? 'zh' : 'en');
+}
+
+function removeWord() {
+  if (!curDetailWord) return;
+  state.words = state.words.filter(w => w.word !== curDetailWord.word);
+  saveState();
+  closeDetail();
+  renderWordbook();
+  showToast('已移出词本');
+}
+
+function reviewWord() {
+  closeDetail();
+  switchTab('review');
+}
+
+// ─── REVIEW ──────────────────────────────────────────────────────────────────
+let rvIdx = 0;
+let rvWords = [];
+let rvRevealed = false;
+
+function renderReview() {
+  rvWords = state.words;
+  const due = rvWords.filter(w => w.status === 'due').length;
+  const ok = rvWords.filter(w => w.status === 'ok').length;
+  const el = document.getElementById('rv-content');
+
+  if (rvWords.length === 0) {
+    el.innerHTML = '<div class="empty-state">还没有单词<br>先去查词加入词本吧</div>';
+    return;
+  }
+
+  const strikeBg = ['done','done','done','done','done','done','today'];
+  const strikeLabels = ['一','二','三','四','五','六','日'];
+
+  el.innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-cell"><div class="stat-num" style="color:var(--blue);">${due}</div><div class="stat-lbl">待复习</div></div>
+      <div class="stat-cell"><div class="stat-num" style="color:var(--green);">${ok}</div><div class="stat-lbl">已掌握</div></div>
+    </div>
+    <div style="background:var(--card);border-radius:var(--radius);border:0.5px solid var(--border);padding:14px;">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">本周连续学习</div>
+      <div class="streak-row">
+        ${strikeLabels.map((l,i)=>`<div class="sd ${strikeBg[i]}">${l}</div>`).join('')}
+      </div>
+    </div>
+    <div id="rv-card-area"></div>
+    <div class="bottom-safe"></div>`;
+
+  renderRvCard();
+}
+
+function renderRvCard() {
+  if (rvWords.length === 0) return;
+  rvRevealed = false;
+  const w = rvWords[rvIdx % rvWords.length];
+  const area = document.getElementById('rv-card-area');
+  if (!area) return;
+
+  area.innerHTML = `
+    <div class="rv-card">
+      <div class="rv-prog-row">
+        <div class="rv-prog-bar"><div class="rv-prog-fill" style="width:${Math.round((rvIdx % rvWords.length + 1) / rvWords.length * 100)}%"></div></div>
+        <span class="rv-prog-text">${rvIdx % rvWords.length + 1}/${rvWords.length}</span>
+      </div>
+      <div class="rv-word">${w.word}</div>
+      <div class="rv-prons">
+        <button class="pron-btn" onclick="speakWord('${w.word}','en')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          🇬🇧 ${w.phonetic_en || '英语'}
+        </button>
+        <button class="pron-btn" onclick="speakWord('${w.word}','ru')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          🇷🇺 ${w.phonetic_ru || '俄语'}
+        </button>
+      </div>
+      <button class="rv-reveal-btn" id="reveal-btn" onclick="revealAnswer()">显示翻译</button>
+      <div id="rv-answer" style="display:none;">
+        <div class="rv-answer">
+          ${(w.translations || []).map(t => `
+            <div class="rv-ans-row">
+              <span class="rv-ans-flag">${t.flag}</span>
+              <div>
+                <div class="rv-ans-text">${t.primary}</div>
+                <div class="rv-ans-ex">${t.meanings?.[0]?.example || ''}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+        <div class="rate-row">
+          <button class="rate-btn rate-hard" onclick="rateWord('hard')">困难</button>
+          <button class="rate-btn rate-ok" onclick="rateWord('ok')">一般</button>
+          <button class="rate-btn rate-easy" onclick="rateWord('easy')">简单</button>
+        </div>
+      </div>
+    </div>
+    <div class="rv-nav">
+      <button class="rv-nav-btn" onclick="rvPrev()">← 上一个</button>
+      <button class="rv-nav-btn" onclick="rvNext()">下一个 →</button>
+    </div>`;
+}
+
+function revealAnswer() {
+  document.getElementById('reveal-btn').style.display = 'none';
+  document.getElementById('rv-answer').style.display = 'block';
+  rvRevealed = true;
+}
+
+function rateWord(rating) {
+  const w = rvWords[rvIdx % rvWords.length];
+  const idx = state.words.findIndex(x => x.word === w.word);
+  if (idx >= 0) {
+    if (rating === 'easy') { state.words[idx].ease = Math.min(100, state.words[idx].ease + 15); state.words[idx].status = 'ok'; }
+    else if (rating === 'ok') { state.words[idx].ease = Math.min(100, state.words[idx].ease + 5); state.words[idx].status = state.words[idx].ease >= 70 ? 'ok' : 'due'; }
+    else { state.words[idx].ease = Math.max(10, state.words[idx].ease - 15); state.words[idx].status = 'due'; }
+    state.words[idx].reviews++;
+    saveState();
+  }
+  rvNext();
+}
+
+function rvNext() { rvIdx++; renderRvCard(); }
+function rvPrev() { if (rvIdx > 0) rvIdx--; renderRvCard(); }
+
+// ─── SETTINGS ────────────────────────────────────────────────────────────────
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) { showToast('请输入 API Key'); return; }
+  state.apiKey = key;
+  saveState();
+  showToast('API Key 已保存');
+}
+
+function toggleSetting(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('on');
+  el.classList.toggle('off');
+  const map = { 't-notify': 'notify', 't-sm2': 'sm2', 't-autopron': 'autopron' };
+  if (map[id]) { state.settings[map[id]] = el.classList.contains('on'); saveState(); }
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '词行数据.json';
+  a.click();
+  showToast('数据已导出');
+}
+
+function clearData() {
+  if (confirm('确定要清除所有数据吗？此操作不可恢复。')) {
+    localStorage.removeItem(STORE_KEY);
+    location.reload();
+  }
+}
+
+// ─── ADD GROUP MODAL ──────────────────────────────────────────────────────────
+const EMOJIS = ['✈️','💼','🏠','🍜','📚','💬','🎵','🏃','💡','🌏','🎯','🔬','❤️','🎓','🎮'];
+let selEmoji = '✈️';
+
+function showAddModal() {
+  selEmoji = '✈️';
+  document.getElementById('group-name-input').value = '';
+  document.getElementById('emoji-grid').innerHTML = EMOJIS.map(e =>
+    `<button class="emoji-opt${e === selEmoji ? ' sel' : ''}" onclick="selE(this,'${e}')">${e}</button>`
+  ).join('');
+  const overlay = document.getElementById('modal-overlay');
+  overlay.classList.add('open');
+  setTimeout(() => document.getElementById('group-name-input').focus(), 300);
+}
+
+function selE(btn, e) {
+  selEmoji = e;
+  document.querySelectorAll('.emoji-opt').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+
+function hideModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) hideModal();
+}
+
+function createGroup() {
+  const name = document.getElementById('group-name-input').value.trim();
+  if (!name) { showToast('请输入分组名称'); return; }
+  const colors = ['#E6F1FB','#EAF3DE','#FAECE7','#FAEEDA','#FBEAF0','#E1F5EE'];
+  state.groups.push({
+    id: Date.now(),
+    name,
+    icon: selEmoji,
+    color: colors[state.groups.length % colors.length]
+  });
+  saveState();
+  hideModal();
+  renderWordbook();
+  showToast(`分组「${name}」已创建`);
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
+function scheduleReviewNotification() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+loadState();
+renderWordbook();
+renderReview();
+scheduleReviewNotification();
+
+// restore settings toggles
+['t-notify','t-sm2','t-autopron'].forEach((id, i) => {
+  const keys = ['notify','sm2','autopron'];
+  const el = document.getElementById(id);
+  if (el && state.settings[keys[i]] === false) {
+    el.classList.remove('on');
+    el.classList.add('off');
+  }
+});
+</script>
+</body>
+</html>
